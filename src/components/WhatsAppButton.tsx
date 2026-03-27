@@ -1,12 +1,13 @@
 import { MessageCircle } from 'lucide-react';
-import { entrepriseInfo } from '../data/entreprise';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
 
 interface WhatsAppButtonProps {
   message?: string;
 }
 
 export default function WhatsAppButton({ message = 'Bonjour, je souhaite avoir des informations.' }: WhatsAppButtonProps) {
-  const whatsappUrl = `https://wa.me/${entrepriseInfo.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}?text=${encodeURIComponent(message)}`;
+  const { entreprise } = useEntrepriseInfo();
+  const whatsappUrl = `https://wa.me/${entreprise.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}?text=${encodeURIComponent(message)}`;
 
   return (
     <a

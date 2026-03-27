@@ -1,10 +1,38 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import CarteBien from '../components/CarteBien';
-import { getBiensVedette } from '../data/biens';
+import { getBiens } from '../api/biens';
+import { mapBienToUi } from '../api/mappers';
+import type { UiBien } from '../types/ui';
 
 export default function BiensEnVedette() {
-  const biensVedette = getBiensVedette();
+  const [biensVedette, setBiensVedette] = useState<UiBien[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getBiens({ en_vedette: true });
+        if (isMounted) {
+          setBiensVedette(data.map(mapBienToUi));
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="bg-[#7A9E9F]/10 section-padding">
@@ -26,6 +54,12 @@ export default function BiensEnVedette() {
             <CarteBien key={bien.id} bien={bien} />
           ))}
         </div>
+
+        {!loading && biensVedette.length === 0 && (
+          <div className="text-center text-gray-500 mb-10">
+            Aucun bien en vedette pour le moment.
+          </div>
+        )}
 
         {/* CTA */}
         <div className="text-center">

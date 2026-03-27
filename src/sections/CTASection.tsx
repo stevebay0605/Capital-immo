@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Phone, ArrowRight } from 'lucide-react';
-import { entrepriseInfo } from '../data/entreprise';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
 
 export default function CTASection() {
+  const { entreprise } = useEntrepriseInfo();
+
   return (
     <section className="relative py-20 overflow-hidden">
       {/* Background */}
@@ -40,11 +42,11 @@ export default function CTASection() {
               <ArrowRight className="w-5 h-5" />
             </Link>
             <a
-              href={`tel:${entrepriseInfo.telephone.replace(/\s/g, '')}`}
+              href={`tel:${entreprise.telephone.replace(/\s/g, '')}`}
               className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-[#0D354E] transition-all duration-300"
             >
               <Phone className="w-5 h-5" />
-              {entrepriseInfo.telephone}
+              {entreprise.telephone}
             </a>
           </div>
         </div>

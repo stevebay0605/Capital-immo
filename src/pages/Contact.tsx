@@ -3,9 +3,11 @@ import {
   MapPin, Phone, Mail, Send, Facebook, 
   CheckCircle, MessageSquare 
 } from 'lucide-react';
-import { entrepriseInfo } from '../data/entreprise';
+import { createContact } from '../api/contacts';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
 
 export default function Contact() {
+  const { entreprise } = useEntrepriseInfo();
   const [formData, setFormData] = useState({
     nom: '',
     telephone: '',
@@ -14,15 +16,33 @@ export default function Contact() {
     message: '',
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ nom: '', telephone: '', email: '', objet: '', message: '' });
-    }, 3000);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await createContact({
+        nom: formData.nom,
+        telephone: formData.telephone,
+        email: formData.email || null,
+        objet: formData.objet,
+        message: formData.message,
+      });
+
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({ nom: '', telephone: '', email: '', objet: '', message: '' });
+      }, 3000);
+    } catch (err) {
+      setSubmitError('Une erreur est survenue. Merci de rÃ©essayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -65,7 +85,7 @@ export default function Contact() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-[#0D354E] mb-1">Adresse</h3>
-                      <p className="text-gray-600 text-sm">{entrepriseInfo.adresse}</p>
+                      <p className="text-gray-600 text-sm">{entreprise.adresse}</p>
                     </div>
                   </div>
 
@@ -76,10 +96,10 @@ export default function Contact() {
                     <div>
                       <h3 className="font-semibold text-[#0D354E] mb-1">Téléphone</h3>
                       <a 
-                        href={`tel:${entrepriseInfo.telephone.replace(/\s/g, '')}`}
+                        href={`tel:${entreprise.telephone.replace(/\s/g, '')}`}
                         className="text-gray-600 text-sm hover:text-[#7A9E9F] transition-colors"
                       >
-                        {entrepriseInfo.telephone}
+                        {entreprise.telephone}
                       </a>
                     </div>
                   </div>
@@ -91,12 +111,12 @@ export default function Contact() {
                     <div>
                       <h3 className="font-semibold text-[#0D354E] mb-1">WhatsApp</h3>
                       <a 
-                        href={`https://wa.me/${entrepriseInfo.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}`}
+                        href={`https://wa.me/${entreprise.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-600 text-sm hover:text-[#25D366] transition-colors"
                       >
-                        {entrepriseInfo.whatsapp}
+                        {entreprise.whatsapp}
                       </a>
                     </div>
                   </div>
@@ -108,10 +128,10 @@ export default function Contact() {
                     <div>
                       <h3 className="font-semibold text-[#0D354E] mb-1">Email</h3>
                       <a 
-                        href={`mailto:${entrepriseInfo.email}`}
+                        href={`mailto:${entreprise.email}`}
                         className="text-gray-600 text-sm hover:text-[#7A9E9F] transition-colors"
                       >
-                        {entrepriseInfo.email}
+                        {entreprise.email}
                       </a>
                     </div>
                   </div>
@@ -125,9 +145,11 @@ export default function Contact() {
                     <div>
                       <h3 className="font-semibold text-[#0D354E] mb-1">Horaires</h3>
                       <div className="text-gray-600 text-sm space-y-1">
-                        <p>Lun - Ven: 08:00 - 17:00</p>
-                        <p>Samedi: 09:00 - 13:00</p>
-                        <p>Dimanche: Fermé</p>
+                        {Object.entries(entreprise.horaires).map(([jour, horaire]) => (
+                          <p key={jour} className="capitalize">
+                            {jour}: {horaire}
+                          </p>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -138,13 +160,13 @@ export default function Contact() {
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="font-semibold text-[#0D354E] mb-4">Suivez-nous</h3>
                 <a
-                  href={entrepriseInfo.facebookUrl}
+                  href={entreprise.facebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-4 bg-[#1877F2]/10 rounded-lg text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-colors"
                 >
                   <Facebook className="w-6 h-6" />
-                  <span className="font-medium">{entrepriseInfo.facebook}</span>
+                  <span className="font-medium">{entreprise.facebook}</span>
                 </a>
               </div>
             </div>
@@ -262,11 +284,16 @@ export default function Contact() {
 
                     <button
                       type="submit"
-                      className="w-full flex items-center justify-center gap-2 py-4 bg-[#0D354E] text-white font-semibold rounded-lg hover:bg-[#0D354E]/90 transition-all duration-300 hover:shadow-lg"
+                      disabled={isSubmitting}
+                      className="w-full flex items-center justify-center gap-2 py-4 bg-[#0D354E] text-white font-semibold rounded-lg hover:bg-[#0D354E]/90 transition-all duration-300 hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <Send className="w-5 h-5" />
-                      Envoyer le message
+                      {isSubmitting ? 'Envoi en cours...' : 'Envoyer le message'}
                     </button>
+
+                    {submitError && (
+                      <p className="text-sm text-red-500 text-center">{submitError}</p>
+                    )}
 
                     <p className="text-xs text-gray-500 text-center">
                       En envoyant ce formulaire, vous acceptez que vos données soient utilisées 
@@ -283,7 +310,7 @@ export default function Contact() {
       {/* Map Section */}
       <section className="h-96 bg-gray-200">
         <iframe
-          src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15928.123456789012!2d${entrepriseInfo.coordonnees.lng}!3d${entrepriseInfo.coordonnees.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTUnNDguMiJTIDE1wrAxNCczNC40IkU!5e0!3m2!1sfr!2scg!4v1234567890123!5m2!1sfr!2scg`}
+          src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15928.123456789012!2d${entreprise.coordonnees.lng}!3d${entreprise.coordonnees.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNMKwMTUnNDguMiJTIDE1wrAxNCczNC40IkU!5e0!3m2!1sfr!2scg!4v1234567890123!5m2!1sfr!2scg`}
           width="100%"
           height="100%"
           style={{ border: 0 }}
@@ -296,3 +323,4 @@ export default function Contact() {
     </main>
   );
 }
+

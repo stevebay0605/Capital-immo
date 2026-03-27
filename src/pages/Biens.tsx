@@ -1,9 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Grid3X3, List, MapPin, X } from 'lucide-react';
 import CarteBien from '../components/CarteBien';
-import { biens, zones, types } from '../data/biens';
+import { getBiens, type BienQueryParams } from '../api/biens';
+import { mapBienToUi } from '../api/mappers';
+import { useBiensFilters } from '../hooks/useBiensFilters';
+import type { UiBien } from '../types/ui';
 
 export default function Biens() {
+  const { filters } = useBiensFilters();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -16,45 +20,74 @@ export default function Biens() {
   const [prixMax, setPrixMax] = useState('');
   const [surfaceMin, setSurfaceMin] = useState('');
 
-  const filteredBiens = useMemo(() => {
-    return biens.filter((bien) => {
-      // Search query
-      if (searchQuery && !bien.titre.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !bien.quartier.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
-      }
-      
-      // Type filter
-      if (selectedType !== 'all' && bien.type !== selectedType) {
-        return false;
-      }
-      
-      // Transaction filter
-      if (selectedTransaction !== 'all' && bien.transaction !== selectedTransaction) {
-        return false;
-      }
-      
-      // Zone filter
-      if (selectedZone !== 'Toutes les zones' && bien.zone !== selectedZone && bien.quartier !== selectedZone) {
-        return false;
-      }
-      
-      // Price filters
-      if (prixMin && bien.prix < parseInt(prixMin) * 1000000) {
-        return false;
-      }
-      if (prixMax && bien.prix > parseInt(prixMax) * 1000000) {
-        return false;
-      }
-      
-      // Surface filter
-      if (surfaceMin && bien.surface < parseInt(surfaceMin)) {
-        return false;
-      }
-      
-      return bien.statut === 'disponible';
-    });
+  const [biens, setBiens] = useState<UiBien[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+
+  const params = useMemo<BienQueryParams>(() => {
+    const next: BienQueryParams = {};
+
+    if (searchQuery) {
+      next.search = searchQuery;
+    }
+
+    if (selectedType !== 'all') {
+      next.type = selectedType as BienQueryParams['type'];
+    }
+
+    if (selectedTransaction !== 'all') {
+      next.transaction = selectedTransaction as BienQueryParams['transaction'];
+    }
+
+    if (selectedZone !== 'Toutes les zones') {
+      next.zone = selectedZone;
+    }
+
+    if (prixMin) {
+      next.prix_min = prixMin;
+    }
+
+    if (prixMax) {
+      next.prix_max = prixMax;
+    }
+
+    if (surfaceMin) {
+      next.surface_min = surfaceMin;
+    }
+
+    return next;
   }, [searchQuery, selectedType, selectedTransaction, selectedZone, prixMin, prixMax, surfaceMin]);
+
+  const paramsKey = useMemo(() => JSON.stringify(params), [params]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getBiens(params);
+        if (isMounted) {
+          setBiens(data.map(mapBienToUi));
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [paramsKey]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -107,7 +140,7 @@ export default function Biens() {
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7A9E9F] whitespace-nowrap"
               >
-                {types.map((type) => (
+                {filters.types.map((type) => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
@@ -119,9 +152,11 @@ export default function Biens() {
                 onChange={(e) => setSelectedTransaction(e.target.value)}
                 className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7A9E9F] whitespace-nowrap"
               >
-                <option value="all">Toutes transactions</option>
-                <option value="vente">Vente</option>
-                <option value="location">Location</option>
+                {filters.transactions.map((transaction) => (
+                  <option key={transaction.value} value={transaction.value}>
+                    {transaction.label}
+                  </option>
+                ))}
               </select>
 
               <select
@@ -129,7 +164,7 @@ export default function Biens() {
                 onChange={(e) => setSelectedZone(e.target.value)}
                 className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7A9E9F] whitespace-nowrap"
               >
-                {zones.map((zone) => (
+                {filters.zones.map((zone) => (
                   <option key={zone} value={zone}>
                     {zone}
                   </option>
@@ -228,9 +263,9 @@ export default function Biens() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-gray-600">
-            <span className="font-semibold text-[#0D354E]">{filteredBiens.length}</span> bien
-            {filteredBiens.length > 1 ? 's' : ''} trouvé
-            {filteredBiens.length > 1 ? 's' : ''}
+            <span className="font-semibold text-[#0D354E]">{biens.length}</span> bien
+            {biens.length > 1 ? 's' : ''} trouvé
+            {biens.length > 1 ? 's' : ''}
           </p>
           {hasActiveFilters && (
             <button
@@ -242,35 +277,51 @@ export default function Biens() {
           )}
         </div>
 
-        {/* Grid/List */}
-        {filteredBiens.length > 0 ? (
-          <div className={`grid gap-6 ${
-            viewMode === 'grid'
-              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-              : 'grid-cols-1'
-          }`}>
-            {filteredBiens.map((bien) => (
-              <CarteBien key={bien.id} bien={bien} />
-            ))}
+        {loading && (
+          <div className="text-center text-gray-500 py-12">
+            Chargement des biens...
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MapPin className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              Aucun bien trouvé
-            </h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-              Aucun bien ne correspond à vos critères de recherche. Essayez de modifier vos filtres ou de lancer une nouvelle recherche.
-            </p>
-            <button
-              onClick={resetFilters}
-              className="mt-6 px-6 py-3 bg-[#7A9E9F] text-white font-semibold rounded-lg hover:bg-[#7A9E9F]/90 transition-colors"
-            >
-              Réinitialiser les filtres
-            </button>
+        )}
+
+        {error && !loading && (
+          <div className="text-center text-red-500 py-12">
+            Impossible de charger les biens pour le moment.
           </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* Grid/List */}
+            {biens.length > 0 ? (
+              <div className={`grid gap-6 ${
+                viewMode === 'grid'
+                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                  : 'grid-cols-1'
+              }`}>
+                {biens.map((bien) => (
+                  <CarteBien key={bien.id} bien={bien} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                  Aucun bien trouvé
+                </h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  Aucun bien ne correspond à vos critères de recherche. Essayez de modifier vos filtres ou de lancer une nouvelle recherche.
+                </p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-6 px-6 py-3 bg-[#7A9E9F] text-white font-semibold rounded-lg hover:bg-[#7A9E9F]/90 transition-colors"
+                >
+                  Réinitialiser les filtres
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>

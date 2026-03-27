@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Home, DollarSign, ArrowRight, Building2, Trees } from 'lucide-react';
-import { zones, types } from '../data/biens';
+import { useBiensFilters } from '../hooks/useBiensFilters';
 
 export default function Hero() {
+  const { filters } = useBiensFilters();
   const [activeTab, setActiveTab] = useState<'acheter' | 'louer' | 'terrain' | 'commercial'>('acheter');
   const [selectedZone, setSelectedZone] = useState('Toutes les zones');
   const [selectedType, setSelectedType] = useState('all');
@@ -96,7 +97,7 @@ export default function Hero() {
                       onChange={(e) => setSelectedZone(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#7A9E9F] focus:border-transparent appearance-none"
                     >
-                      {zones.map((zone) => (
+                      {filters.zones.map((zone) => (
                         <option key={zone} value={zone}>
                           {zone}
                         </option>
@@ -117,7 +118,7 @@ export default function Hero() {
                       onChange={(e) => setSelectedType(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#7A9E9F] focus:border-transparent appearance-none"
                     >
-                      {types.map((type) => (
+                      {filters.types.map((type) => (
                         <option key={type.value} value={type.value}>
                           {type.label}
                         </option>

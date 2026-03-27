@@ -1,21 +1,82 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   MapPin, Maximize, BedDouble, Bath, Home, ArrowLeft, 
   Check, Phone, Mail, Share2, Heart, ChevronLeft, ChevronRight 
 } from 'lucide-react';
-import { getBienById, getBiensSimilaires, formatPrix } from '../data/biens';
+import { getBien, getBiensSimilaires } from '../api/biens';
+import { mapBienToUi } from '../api/mappers';
+import type { UiBien } from '../types/ui';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
+import { formatPrix } from '../utils/format';
 import CarteBien from '../components/CarteBien';
 import WhatsAppButton from '../components/WhatsAppButton';
-import { entrepriseInfo } from '../data/entreprise';
 
 export default function BienDetail() {
+  const { entreprise } = useEntrepriseInfo();
   const { id } = useParams<{ id: string }>();
-  const bien = id ? getBienById(id) : undefined;
+  const [bien, setBien] = useState<UiBien | null>(null);
+  const [biensSimilaires, setBiensSimilaires] = useState<UiBien[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  if (!bien) {
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [bien?.id]);
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getBien(id);
+        const mapped = mapBienToUi(data);
+        if (isMounted) {
+          setBien(mapped);
+        }
+
+        const similaires = await getBiensSimilaires(data.id);
+        if (isMounted) {
+          setBiensSimilaires(similaires.map(mapBienToUi));
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err);
+          setBien(null);
+          setBiensSimilaires([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="pt-20 min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-gray-500">Chargement du bien...</div>
+      </main>
+    );
+  }
+
+  if (!bien || error) {
     return (
       <main className="pt-20 min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -28,8 +89,6 @@ export default function BienDetail() {
       </main>
     );
   }
-
-  const biensSimilaires = getBiensSimilaires(bien);
   const whatsappMessage = `Bonjour, je suis intéressé par le bien "${bien.titre}" (Réf: ${bien.reference}). Pourriez-vous me donner plus d'informations ?`;
 
   const nextImage = () => {
@@ -243,14 +302,14 @@ export default function BienDetail() {
               {/* Contact Buttons */}
               <div className="space-y-3 mb-6">
                 <a
-                  href={`tel:${entrepriseInfo.telephone.replace(/\s/g, '')}`}
+                  href={`tel:${entreprise.telephone.replace(/\s/g, '')}`}
                   className="flex items-center justify-center gap-2 w-full py-3 bg-[#0D354E] text-white font-semibold rounded-lg hover:bg-[#0D354E]/90 transition-colors"
                 >
                   <Phone className="w-5 h-5" />
                   Appeler
                 </a>
                 <a
-                  href={`https://wa.me/${entrepriseInfo.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}?text=${encodeURIComponent(whatsappMessage)}`}
+                  href={`https://wa.me/${entreprise.whatsapp.replace(/\+/g, '').replace(/\s/g, '')}?text=${encodeURIComponent(whatsappMessage)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#25D366]/90 transition-colors"
@@ -261,7 +320,7 @@ export default function BienDetail() {
                   WhatsApp
                 </a>
                 <a
-                  href={`mailto:${entrepriseInfo.email}?subject=Intérêt pour le bien ${bien.reference}&body=${encodeURIComponent(whatsappMessage)}`}
+                  href={`mailto:${entreprise.email}?subject=Intérêt pour le bien ${bien.reference}&body=${encodeURIComponent(whatsappMessage)}`}
                   className="flex items-center justify-center gap-2 w-full py-3 border-2 border-[#0D354E] text-[#0D354E] font-semibold rounded-lg hover:bg-[#0D354E] hover:text-white transition-colors"
                 >
                   <Mail className="w-5 h-5" />
@@ -312,3 +371,4 @@ export default function BienDetail() {
     </main>
   );
 }
+

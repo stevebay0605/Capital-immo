@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Maximize, BedDouble, Bath, ArrowRight } from 'lucide-react';
-import type { Bien } from '../data/biens';
-import { formatPrix } from '../data/biens';
+import type { UiBien } from '../types/ui';
+import { formatPrix } from '../utils/format';
 
 interface CarteBienProps {
-  bien: Bien;
+  bien: UiBien;
 }
 
 export default function CarteBien({ bien }: CarteBienProps) {

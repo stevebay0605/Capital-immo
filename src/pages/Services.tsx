@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Home, Key, Building2, TrendingUp, ArrowRight, Check, Phone } from 'lucide-react';
-import { services } from '../data/services';
-import { entrepriseInfo } from '../data/entreprise';
+import { useServices } from '../hooks/useServices';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Home,
@@ -11,6 +11,9 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 export default function Services() {
+  const { services } = useServices();
+  const { entreprise } = useEntrepriseInfo();
+
   return (
     <main className="pt-20 min-h-screen bg-gray-50">
       {/* Hero */}
@@ -127,11 +130,11 @@ export default function Services() {
                 <ArrowRight className="w-5 h-5" />
               </Link>
               <a
-                href={`tel:${entrepriseInfo.telephone.replace(/\s/g, '')}`}
+                href={`tel:${entreprise.telephone.replace(/\s/g, '')}`}
                 className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-[#7A9E9F] transition-colors"
               >
                 <Phone className="w-5 h-5" />
-                {entrepriseInfo.telephone}
+                {entreprise.telephone}
               </a>
             </div>
           </div>

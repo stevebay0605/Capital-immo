@@ -1,5 +1,6 @@
 import { Shield, Heart, Award, Eye, Calendar, Target } from 'lucide-react';
-import { entrepriseInfo, equipe, valeurs } from '../data/entreprise';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
+import { useEquipe } from '../hooks/useEquipe';
 import ChiffresCles from '../sections/ChiffresCles';
 import Temoignages from '../sections/Temoignages';
 
@@ -11,6 +12,11 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 export default function About() {
+  const { entreprise } = useEntrepriseInfo();
+  const { equipe } = useEquipe();
+  const valeurs = entreprise.valeurs ?? [];
+  const experience = new Date().getFullYear() - entreprise.dateCreation;
+
   return (
     <main className="pt-20 min-h-screen bg-gray-50">
       {/* Hero */}
@@ -26,7 +32,7 @@ export default function About() {
               À propos de Capital Immo Group
             </h1>
             <p className="text-white/80 max-w-3xl mx-auto text-lg">
-              {entrepriseInfo.slogan}
+              {entreprise.slogan}
             </p>
           </div>
         </div>
@@ -48,7 +54,7 @@ export default function About() {
               {/* Experience badge */}
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-[#7A9E9F] rounded-2xl flex flex-col items-center justify-center text-white shadow-lg">
                 <Calendar className="w-8 h-8 mb-1" />
-                <span className="text-3xl font-bold">{new Date().getFullYear() - 2011}</span>
+                <span className="text-3xl font-bold">{experience}</span>
                 <span className="text-sm">ans d'expérience</span>
               </div>
             </div>
@@ -60,13 +66,13 @@ export default function About() {
                 Une agence de référence à Brazzaville
               </h2>
               <p className="text-gray-600 leading-relaxed mb-6">
-                {entrepriseInfo.histoire}
+                {entreprise.histoire}
               </p>
               <div className="flex items-start gap-4 p-4 bg-[#7A9E9F]/10 rounded-xl">
                 <Target className="w-8 h-8 text-[#7A9E9F] flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="font-semibold text-[#0D354E] mb-1">Notre mission</h3>
-                  <p className="text-gray-600 text-sm">{entrepriseInfo.mission}</p>
+                  <p className="text-gray-600 text-sm">{entreprise.mission}</p>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Home, Key, Building2, TrendingUp, ArrowRight } from 'lucide-react';
-import { services } from '../data/services';
+import { useServices } from '../hooks/useServices';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Home,
@@ -10,6 +10,8 @@ const iconMap: { [key: string]: React.ElementType } = {
 };
 
 export default function ServicesSection() {
+  const { services } = useServices();
+
   return (
     <section className="bg-[#0D354E] section-padding relative overflow-hidden">
       {/* Background pattern */}

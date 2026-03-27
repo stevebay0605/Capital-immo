@@ -1,36 +1,42 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Star, Quote } from 'lucide-react';
-import { temoignages } from '../data/temoignages';
+import { useTemoignages } from '../hooks/useTemoignages';
 
 export default function Temoignages() {
+  const { temoignages } = useTemoignages();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || temoignages.length === 0) return;
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % temoignages.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying]);
+  }, [isAutoPlaying, temoignages.length]);
 
   const goToPrevious = () => {
+    if (temoignages.length === 0) return;
     setIsAutoPlaying(false);
     setCurrentIndex((prev) => (prev - 1 + temoignages.length) % temoignages.length);
   };
 
   const goToNext = () => {
+    if (temoignages.length === 0) return;
     setIsAutoPlaying(false);
     setCurrentIndex((prev) => (prev + 1) % temoignages.length);
   };
 
-  const visibleTemoignages = [
-    temoignages[currentIndex],
-    temoignages[(currentIndex + 1) % temoignages.length],
-    temoignages[(currentIndex + 2) % temoignages.length],
-  ];
+  const visibleTemoignages =
+    temoignages.length > 0
+      ? [
+          temoignages[currentIndex],
+          temoignages[(currentIndex + 1) % temoignages.length],
+          temoignages[(currentIndex + 2) % temoignages.length],
+        ]
+      : [];
 
   return (
     <section className="bg-[#7A9E9F]/10 section-padding">
@@ -47,7 +53,12 @@ export default function Temoignages() {
         </div>
 
         {/* Carousel */}
-        <div className="relative">
+        {temoignages.length === 0 ? (
+          <div className="text-center text-gray-500">
+            Aucun témoignage disponible pour le moment.
+          </div>
+        ) : (
+          <div className="relative">
           {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleTemoignages.map((temoignage, index) => (
@@ -131,6 +142,7 @@ export default function Temoignages() {
             </button>
           </div>
         </div>
+        )}
       </div>
     </section>
   );

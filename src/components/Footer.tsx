@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Facebook, ChevronRight } from 'lucide-react';
-import { entrepriseInfo } from '../data/entreprise';
+import { useEntrepriseInfo } from '../hooks/useEntrepriseInfo';
 import { staticAssets } from '@/assets';
 
 const quickLinks = [
@@ -19,6 +19,8 @@ const servicesLinks = [
 ];
 
 export default function Footer() {
+  const { entreprise } = useEntrepriseInfo();
+
   return (
     <footer className="bg-[#0D354E] text-white">
       {/* Wave decoration */}
@@ -48,26 +50,26 @@ export default function Footer() {
                 />
               </Link>
               <p className="text-white/70 text-sm leading-relaxed mb-6">
-                {entrepriseInfo.slogan}
+                {entreprise.slogan}
               </p>
               <div className="space-y-3">
                 <a
-                  href={`tel:${entrepriseInfo.telephone.replace(/\s/g, '')}`}
+                  href={`tel:${entreprise.telephone.replace(/\s/g, '')}`}
                   className="flex items-center gap-3 text-white/70 hover:text-[#7A9E9F] transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  <span className="text-sm">{entrepriseInfo.telephone}</span>
+                  <span className="text-sm">{entreprise.telephone}</span>
                 </a>
                 <a
-                  href={`mailto:${entrepriseInfo.email}`}
+                  href={`mailto:${entreprise.email}`}
                   className="flex items-center gap-3 text-white/70 hover:text-[#7A9E9F] transition-colors"
                 >
                   <Mail className="w-4 h-4" />
-                  <span className="text-sm">{entrepriseInfo.email}</span>
+                  <span className="text-sm">{entreprise.email}</span>
                 </a>
                 <div className="flex items-start gap-3 text-white/70">
                   <MapPin className="w-4 h-4 mt-0.5" />
-                  <span className="text-sm">{entrepriseInfo.adresse}</span>
+                  <span className="text-sm">{entreprise.adresse}</span>
                 </div>
               </div>
             </div>
@@ -112,7 +114,7 @@ export default function Footer() {
             <div>
               <h4 className="text-lg font-semibold mb-6">Horaires d'ouverture</h4>
               <div className="space-y-2">
-                {Object.entries(entrepriseInfo.horaires).map(([jour, horaire]) => (
+                {Object.entries(entreprise.horaires).map(([jour, horaire]) => (
                   <div key={jour} className="flex items-center justify-between text-sm">
                     <span className="text-white/70 capitalize">{jour}</span>
                     <span className={horaire === 'Fermé' ? 'text-red-400' : 'text-white/90'}>
@@ -123,13 +125,13 @@ export default function Footer() {
               </div>
               <div className="mt-6">
                 <a
-                  href={entrepriseInfo.facebookUrl}
+                  href={entreprise.facebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#7A9E9F]/20 text-[#7A9E9F] rounded-lg hover:bg-[#7A9E9F]/30 transition-colors"
                 >
                   <Facebook className="w-5 h-5" />
-                  <span className="text-sm">{entrepriseInfo.facebook}</span>
+                  <span className="text-sm">{entreprise.facebook}</span>
                 </a>
               </div>
             </div>
@@ -138,7 +140,7 @@ export default function Footer() {
           {/* Bottom Bar */}
           <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-white/50 text-sm text-center md:text-left">
-              © {new Date().getFullYear()} {entrepriseInfo.nom}. Tous droits réservés.
+              © {new Date().getFullYear()} {entreprise.nom}. Tous droits réservés.
             </p>
             <div className="flex items-center gap-6 text-sm text-white/50">
               <Link to="/" className="hover:text-[#7A9E9F] transition-colors">
