@@ -48,7 +48,7 @@ export interface BienPayload {
   replace_images?: boolean;
 }
 
-export const getBiens = async (params?: BienQueryParams) => {
+export const getBiens = async (params?: BienQueryParams): Promise<ApiBien[]> => {
   const response = await api.get<ApiBien[] | ApiPaginated<ApiBien>>('/biens', { params });
   return unwrapList(response.data);
 };
