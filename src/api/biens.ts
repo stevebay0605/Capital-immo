@@ -37,6 +37,7 @@ export interface BienPayload {
   etage?: number | null;
   type: BienType;
   transaction: BienTransaction;
+  location_period?: 'mensuel' | 'journalier' | null;
   zone: string;
   quartier: string;
   reference?: string;
@@ -44,6 +45,7 @@ export interface BienPayload {
   en_vedette?: boolean;
   caracteristiques?: string[];
   images?: File[];
+  replace_images?: boolean;
 }
 
 export const getBiens = async (params?: BienQueryParams) => {
@@ -72,13 +74,13 @@ export const getBiensStats = async () => {
 };
 
 export const createBien = async (payload: BienPayload) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.post<ApiBien>('/biens', formData);
   return response.data;
 };
 
 export const updateBien = async (bienId: string | number, payload: Partial<BienPayload>) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.put<ApiBien>(`/biens/${bienId}`, formData);
   return response.data;
 };

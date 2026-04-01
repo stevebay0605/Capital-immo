@@ -15,12 +15,13 @@ import type {
   UiTemoignage,
 } from '../types/ui';
 import { DEFAULT_AVATAR, DEFAULT_BIEN_IMAGE, defaultBiensFilters, defaultEntrepriseInfo } from './defaults';
+import { resolveAssetUrl } from './utils';
 
 const uniq = <T,>(items: T[]) => Array.from(new Set(items));
 
 export const mapBienToUi = (bien: ApiBien): UiBien => {
   const images = (bien.images ?? [])
-    .map((image) => image.url)
+    .map((image) => resolveAssetUrl(image.url))
     .filter(Boolean);
 
   return {
@@ -51,7 +52,7 @@ export const mapServiceToUi = (service: ApiService): UiService => ({
   description: service.description,
   descriptionLongue: service.description_longue,
   icon: service.icon,
-  image: service.image ?? DEFAULT_BIEN_IMAGE,
+  image: resolveAssetUrl(service.image) || DEFAULT_BIEN_IMAGE,
   avantages: service.avantages ?? [],
   cta: service.cta,
   isActive: service.is_active,
@@ -63,7 +64,7 @@ export const mapTemoignageToUi = (temoignage: ApiTemoignage): UiTemoignage => ({
   initiale: temoignage.initiale ?? '',
   role: temoignage.role,
   message: temoignage.message,
-  avatar: temoignage.avatar ?? DEFAULT_AVATAR,
+  avatar: resolveAssetUrl(temoignage.avatar) || DEFAULT_AVATAR,
   note: temoignage.note,
   isActive: temoignage.is_active,
 });
@@ -75,7 +76,7 @@ export const mapMembreEquipeToUi = (membre: ApiMembreEquipe): UiMembreEquipe => 
   poste: membre.poste,
   email: membre.email ?? '',
   telephone: membre.telephone ?? '',
-  photo: membre.photo ?? DEFAULT_AVATAR,
+  photo: resolveAssetUrl(membre.photo) || DEFAULT_AVATAR,
   description: membre.description ?? '',
   isActive: membre.is_active,
 });
@@ -94,8 +95,8 @@ export const mapEntrepriseToUi = (entreprise: ApiEntrepriseInfo): UiEntrepriseIn
   mission: entreprise.mission ?? defaultEntrepriseInfo.mission,
   dateCreation: entreprise.date_creation ?? defaultEntrepriseInfo.dateCreation,
   clientsSatisfaits: entreprise.clients_satisfaits ?? defaultEntrepriseInfo.clientsSatisfaits,
-  heroImageUrl: entreprise.hero_image_url ?? defaultEntrepriseInfo.heroImageUrl,
-  aboutImageUrl: entreprise.about_image_url ?? defaultEntrepriseInfo.aboutImageUrl,
+  heroImageUrl: resolveAssetUrl(entreprise.hero_image_url) || defaultEntrepriseInfo.heroImageUrl,
+  aboutImageUrl: resolveAssetUrl(entreprise.about_image_url) || defaultEntrepriseInfo.aboutImageUrl,
   valeurs: entreprise.valeurs ?? defaultEntrepriseInfo.valeurs,
   horaires: entreprise.horaires ?? defaultEntrepriseInfo.horaires,
   coordonnees: entreprise.coordonnees ?? defaultEntrepriseInfo.coordonnees,

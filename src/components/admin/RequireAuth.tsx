@@ -8,7 +8,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
+      <div className="admin-shell flex min-h-screen items-center justify-center px-4 text-gray-500">
         Chargement...
       </div>
     );

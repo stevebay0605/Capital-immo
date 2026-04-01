@@ -30,13 +30,13 @@ export const getService = async (idOrSlug: string | number) => {
 };
 
 export const createService = async (payload: ServicePayload) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.post<ApiService>('/services', formData);
   return response.data;
 };
 
 export const updateService = async (serviceId: string | number, payload: Partial<ServicePayload>) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.put<ApiService>(`/services/${serviceId}`, formData);
   return response.data;
 };

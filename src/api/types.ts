@@ -25,6 +25,7 @@ export interface ApiBien {
   etage?: number | null;
   type: BienType;
   transaction: BienTransaction;
+  location_period?: 'mensuel' | 'journalier' | null;
   zone: string;
   quartier: string;
   reference: string;

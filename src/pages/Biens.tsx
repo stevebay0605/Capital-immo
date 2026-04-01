@@ -22,7 +22,7 @@ export default function Biens() {
 
   const [biens, setBiens] = useState<UiBien[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const params = useMemo<BienQueryParams>(() => {
     const next: BienQueryParams = {};
@@ -71,9 +71,9 @@ export default function Biens() {
         if (isMounted) {
           setBiens(data.map(mapBienToUi));
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
-          setError(err);
+          setError('Impossible de charger les biens pour le moment.');
         }
       } finally {
         if (isMounted) {
@@ -285,7 +285,7 @@ export default function Biens() {
 
         {error && !loading && (
           <div className="text-center text-red-500 py-12">
-            Impossible de charger les biens pour le moment.
+            {error}
           </div>
         )}
 

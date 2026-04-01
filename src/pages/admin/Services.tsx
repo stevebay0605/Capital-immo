@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Edit3, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import PageHeader from '@/components/admin/PageHeader';
+import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
+import StatusBadge from '@/components/admin/StatusBadge';
+import AdminDrawer from '@/components/admin/AdminDrawer';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+import EmptyState from '@/components/admin/EmptyState';
 import {
   createService,
   deleteService,
@@ -24,18 +32,20 @@ const emptyForm: ServicePayload = {
 export default function AdminServices() {
   const [services, setServices] = useState<ApiService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingService, setEditingService] = useState<ApiService | null>(null);
   const [form, setForm] = useState<ServicePayload>(emptyForm);
   const [avantagesText, setAvantagesText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const loadServices = async () => {
     setLoading(true);
     try {
       const data = await getServices({ per_page: 1000 });
       setServices(data);
-    } catch (err) {
-      setError('Impossible de charger les services.');
+    } catch {
+      toast.error("Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -45,14 +55,15 @@ export default function AdminServices() {
     void loadServices();
   }, []);
 
-  const resetForm = () => {
-    setEditingId(null);
+  const openCreateDrawer = () => {
+    setEditingService(null);
     setForm(emptyForm);
     setAvantagesText('');
+    setDrawerOpen(true);
   };
 
-  const handleEdit = (service: ApiService) => {
-    setEditingId(service.id);
+  const openEditDrawer = (service: ApiService) => {
+    setEditingService(service);
     setForm({
       titre: service.titre,
       description: service.description,
@@ -65,191 +76,247 @@ export default function AdminServices() {
       is_active: service.is_active,
     });
     setAvantagesText((service.avantages ?? []).join('\n'));
+    setDrawerOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSaving(true);
 
     const payload: ServicePayload = {
       ...form,
-      avantages: avantagesText
-        ? avantagesText.split('\n').map((item) => item.trim()).filter(Boolean)
-        : [],
+      avantages: avantagesText.split('\n').map((item) => item.trim()).filter(Boolean),
       image: form.image ?? undefined,
     };
 
     try {
-      if (editingId) {
-        await updateService(editingId, payload);
+      if (editingService) {
+        await updateService(editingService.id, payload);
+        toast.success('Service mis a jour');
       } else {
         await createService(payload);
+        toast.success('Service cree avec succes');
       }
-      resetForm();
+      setDrawerOpen(false);
       await loadServices();
-    } catch (err) {
-      setError("Une erreur s'est produite lors de l'enregistrement.");
+    } catch {
+      toast.error("Une erreur est survenue");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer ce service ?')) return;
-    await deleteService(id);
-    await loadServices();
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await deleteService(confirmDeleteId);
+      toast.success('Service supprime avec succes');
+      setConfirmDeleteId(null);
+      await loadServices();
+    } catch {
+      toast.error("Une erreur est survenue");
+    }
   };
 
   const handleToggleActive = async (id: number) => {
-    await toggleServiceActive(id);
-    await loadServices();
+    try {
+      await toggleServiceActive(id);
+      toast.success('Service mis a jour');
+      await loadServices();
+    } catch {
+      toast.error("Une erreur est survenue");
+    }
   };
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-[#0D354E]">Gestion des services</h2>
-        <p className="text-sm text-slate-500">Pilotez vos services et leur ordre d'affichage.</p>
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h3 className="font-semibold text-[#0D354E] mb-4">
-          {editingId ? 'Modifier le service' : 'Nouveau service'}
-        </h3>
-        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Titre"
-            value={form.titre}
-            onChange={(e) => setForm((prev) => ({ ...prev, titre: e.target.value }))}
-            required
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="IcÃ´ne (ex: Home)"
-            value={form.icon ?? ''}
-            onChange={(e) => setForm((prev) => ({ ...prev, icon: e.target.value }))}
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="CTA"
-            value={form.cta ?? ''}
-            onChange={(e) => setForm((prev) => ({ ...prev, cta: e.target.value }))}
-          />
-          <input
-            type="number"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Ordre"
-            value={form.ordre ?? 0}
-            onChange={(e) => setForm((prev) => ({ ...prev, ordre: Number(e.target.value) }))}
-          />
-          <textarea
-            className="md:col-span-2 rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
-            placeholder="Description courte"
-            value={form.description}
-            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-            required
-          />
-          <textarea
-            className="md:col-span-2 rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[120px]"
-            placeholder="Description longue"
-            value={form.description_longue}
-            onChange={(e) => setForm((prev) => ({ ...prev, description_longue: e.target.value }))}
-            required
-          />
-          <textarea
-            className="md:col-span-2 rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
-            placeholder="Avantages (un par ligne)"
-            value={avantagesText}
-            onChange={(e) => setAvantagesText(e.target.value)}
-          />
-          <div className="md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-slate-600">Image</label>
-            <input
-              type="file"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  image: e.target.files?.[0] ?? null,
-                }))
-              }
-            />
+  const columns = useMemo<DataTableColumn<ApiService>[]>(
+    () => [
+      {
+        key: 'titre',
+        header: 'Service',
+        render: (service) => (
+          <div>
+            <p className="font-semibold text-slate-800">{service.titre}</p>
+            <p className="text-xs text-slate-500">{service.cta}</p>
           </div>
-          <div className="md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-slate-600">Actif</label>
-            <input
-              type="checkbox"
-              checked={form.is_active ?? false}
-              onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-            />
-          </div>
-          <div className="md:col-span-2 flex flex-wrap gap-3">
+        ),
+      },
+      {
+        key: 'ordre',
+        header: 'Ordre',
+        render: (service) => <span className="text-sm text-slate-600">{service.ordre}</span>,
+      },
+      {
+        key: 'actif',
+        header: 'Statut',
+        render: (service) => <StatusBadge status={service.is_active ? 'actif' : 'inactif'} />,
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        render: (service) => (
+          <div className="flex items-center gap-2">
             <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-[#0D354E] text-white text-sm font-semibold hover:bg-[#0D354E]/90"
+              type="button"
+              onClick={() => openEditDrawer(service)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             >
-              {editingId ? 'Mettre Ã  jour' : 'CrÃ©er'}
+              <Edit3 className="h-4 w-4" />
             </button>
-            {editingId && (
+            <button
+              type="button"
+              onClick={() => handleToggleActive(service.id)}
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {service.is_active ? 'Desactiver' : 'Activer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteId(service.id)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Services"
+        subtitle={`${services.length} service(s) disponibles`}
+        action={
+          <button
+            type="button"
+            onClick={openCreateDrawer}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau service
+          </button>
+        }
+      />
+
+      <DataTable
+        columns={columns}
+        data={services}
+        loading={loading}
+        rowKey={(service) => service.id}
+        emptyState={
+          <EmptyState
+            icon={Plus}
+            title="Aucun service"
+            description="Ajoute un premier service pour commencer."
+            action={
               <button
                 type="button"
-                onClick={resetForm}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                onClick={openCreateDrawer}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90"
               >
-                Annuler
+                Ajouter un service
               </button>
-            )}
+            }
+          />
+        }
+      />
+
+      <AdminDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={editingService ? 'Modifier le service' : 'Nouveau service'}
+        description="Gerer les contenus et l'etat d'activation du service."
+        footer={
+          <div className="flex w-full justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              form="service-form"
+              disabled={saving}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90 disabled:opacity-70"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        }
+      >
+        <form id="service-form" onSubmit={handleSubmit} className="space-y-6">
+          <input
+            value={form.titre}
+            onChange={(e) => setForm((prev) => ({ ...prev, titre: e.target.value }))}
+            placeholder="Titre"
+            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            required
+          />
+          <input
+            value={form.icon ?? ''}
+            onChange={(e) => setForm((prev) => ({ ...prev, icon: e.target.value }))}
+            placeholder="Icone Lucide"
+            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <input
+            value={form.cta ?? ''}
+            onChange={(e) => setForm((prev) => ({ ...prev, cta: e.target.value }))}
+            placeholder="CTA"
+            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Description courte"
+            rows={3}
+            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <textarea
+            value={form.description_longue}
+            onChange={(e) => setForm((prev) => ({ ...prev, description_longue: e.target.value }))}
+            placeholder="Description longue"
+            rows={5}
+            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <textarea
+            value={avantagesText}
+            onChange={(e) => setAvantagesText(e.target.value)}
+            placeholder="Un avantage par ligne"
+            rows={4}
+            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              type="number"
+              value={form.ordre ?? 0}
+              onChange={(e) => setForm((prev) => ({ ...prev, ordre: Number(e.target.value) }))}
+              placeholder="Ordre"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+              <span className="text-sm font-medium text-slate-700">Actif</span>
+              <input
+                type="checkbox"
+                checked={form.is_active ?? false}
+                onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+            </label>
           </div>
         </form>
-      </div>
+      </AdminDrawer>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h3 className="font-semibold text-[#0D354E] mb-4">Liste des services</h3>
-        {loading ? (
-          <p className="text-sm text-slate-500">Chargement...</p>
-        ) : (
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-slate-500">
-                <tr>
-                  <th className="py-2">Titre</th>
-                  <th className="py-2">CTA</th>
-                  <th className="py-2">Actif</th>
-                  <th className="py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((service) => (
-                  <tr key={service.id} className="border-t border-slate-100">
-                    <td className="py-2">{service.titre}</td>
-                    <td className="py-2">{service.cta}</td>
-                    <td className="py-2">{service.is_active ? 'Oui' : 'Non'}</td>
-                    <td className="py-2 flex flex-wrap gap-2">
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-slate-200"
-                        onClick={() => handleEdit(service)}
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-slate-200"
-                        onClick={() => handleToggleActive(service.id)}
-                      >
-                        {service.is_active ? 'DÃ©sactiver' : 'Activer'}
-                      </button>
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
-                        onClick={() => handleDelete(service.id)}
-                      >
-                        Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Supprimer ce service ?"
+        message="Cette action supprimera definitivement le service selectionne."
+      />
     </div>
   );
 }

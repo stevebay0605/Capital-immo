@@ -30,13 +30,13 @@ export const getMembreEquipe = async (id: string | number) => {
 };
 
 export const createMembreEquipe = async (payload: MembreEquipePayload) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.post<ApiMembreEquipe>('/equipe', formData);
   return response.data;
 };
 
 export const updateMembreEquipe = async (id: string | number, payload: Partial<MembreEquipePayload>) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.put<ApiMembreEquipe>(`/equipe/${id}`, formData);
   return response.data;
 };

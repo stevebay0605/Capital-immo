@@ -1,4 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Edit3, Plus, Trash2, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import PageHeader from '@/components/admin/PageHeader';
+import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
+import StatusBadge from '@/components/admin/StatusBadge';
+import AdminDrawer from '@/components/admin/AdminDrawer';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
+import EmptyState from '@/components/admin/EmptyState';
 import {
   createMembreEquipe,
   deleteMembreEquipe,
@@ -24,17 +32,19 @@ const emptyForm: MembreEquipePayload = {
 export default function AdminEquipe() {
   const [membres, setMembres] = useState<ApiMembreEquipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingMembre, setEditingMembre] = useState<ApiMembreEquipe | null>(null);
   const [form, setForm] = useState<MembreEquipePayload>(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const loadEquipe = async () => {
     setLoading(true);
     try {
       const data = await getEquipe({ per_page: 1000 });
       setMembres(data);
-    } catch (err) {
-      setError("Impossible de charger l'Ã©quipe.");
+    } catch {
+      toast.error("Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -44,201 +54,267 @@ export default function AdminEquipe() {
     void loadEquipe();
   }, []);
 
-  const resetForm = () => {
-    setEditingId(null);
+  const openCreateDrawer = () => {
+    setEditingMembre(null);
     setForm(emptyForm);
+    setDrawerOpen(true);
   };
 
-  const handleEdit = (item: ApiMembreEquipe) => {
-    setEditingId(item.id);
+  const openEditDrawer = (membre: ApiMembreEquipe) => {
+    setEditingMembre(membre);
     setForm({
-      prenom: item.prenom,
-      nom: item.nom,
-      poste: item.poste,
-      email: item.email ?? '',
-      telephone: item.telephone ?? '',
+      prenom: membre.prenom,
+      nom: membre.nom,
+      poste: membre.poste,
+      email: membre.email ?? '',
+      telephone: membre.telephone ?? '',
       photo: null,
-      description: item.description ?? '',
-      ordre: item.ordre,
-      is_active: item.is_active,
+      description: membre.description ?? '',
+      ordre: membre.ordre,
+      is_active: membre.is_active,
     });
+    setDrawerOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
+    setSaving(true);
     try {
-      if (editingId) {
-        await updateMembreEquipe(editingId, form);
+      if (editingMembre) {
+        await updateMembreEquipe(editingMembre.id, form);
+        toast.success('Membre mis a jour');
       } else {
         await createMembreEquipe(form);
+        toast.success('Membre cree avec succes');
       }
-      resetForm();
+      setDrawerOpen(false);
       await loadEquipe();
-    } catch (err) {
-      setError("Une erreur s'est produite lors de l'enregistrement.");
+    } catch {
+      toast.error("Une erreur est survenue");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer ce membre ?')) return;
-    await deleteMembreEquipe(id);
-    await loadEquipe();
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await deleteMembreEquipe(confirmDeleteId);
+      toast.success('Membre supprime avec succes');
+      setConfirmDeleteId(null);
+      await loadEquipe();
+    } catch {
+      toast.error("Une erreur est survenue");
+    }
   };
 
   const handleToggleActive = async (id: number) => {
-    await toggleMembreEquipeActive(id);
-    await loadEquipe();
+    try {
+      await toggleMembreEquipeActive(id);
+      toast.success('Membre mis a jour');
+      await loadEquipe();
+    } catch {
+      toast.error("Une erreur est survenue");
+    }
   };
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-[#0D354E]">Gestion de l'Ã©quipe</h2>
-        <p className="text-sm text-slate-500">GÃ©rez les membres et leurs profils.</p>
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h3 className="font-semibold text-[#0D354E] mb-4">
-          {editingId ? 'Modifier un membre' : 'Nouveau membre'}
-        </h3>
-        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="PrÃ©nom"
-            value={form.prenom}
-            onChange={(e) => setForm((prev) => ({ ...prev, prenom: e.target.value }))}
-            required
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Nom"
-            value={form.nom}
-            onChange={(e) => setForm((prev) => ({ ...prev, nom: e.target.value }))}
-            required
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Poste"
-            value={form.poste}
-            onChange={(e) => setForm((prev) => ({ ...prev, poste: e.target.value }))}
-            required
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Email"
-            value={form.email ?? ''}
-            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-          />
-          <input
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="TÃ©lÃ©phone"
-            value={form.telephone ?? ''}
-            onChange={(e) => setForm((prev) => ({ ...prev, telephone: e.target.value }))}
-          />
-          <input
-            type="number"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Ordre"
-            value={form.ordre ?? 0}
-            onChange={(e) => setForm((prev) => ({ ...prev, ordre: Number(e.target.value) }))}
-          />
-          <textarea
-            className="md:col-span-2 rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
-            placeholder="Description"
-            value={form.description ?? ''}
-            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-          />
-          <div className="md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-slate-600">Photo</label>
-            <input
-              type="file"
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  photo: e.target.files?.[0] ?? null,
-                }))
-              }
-            />
+  const columns = useMemo<DataTableColumn<ApiMembreEquipe>[]>(
+    () => [
+      {
+        key: 'nom',
+        header: 'Membre',
+        render: (membre) => (
+          <div>
+            <p className="font-semibold text-slate-800">
+              {membre.prenom} {membre.nom}
+            </p>
+            <p className="text-xs text-slate-500">{membre.poste}</p>
           </div>
-          <div className="md:col-span-2 flex items-center gap-3">
-            <label className="text-sm text-slate-600">Actif</label>
-            <input
-              type="checkbox"
-              checked={form.is_active ?? false}
-              onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
-            />
+        ),
+      },
+      {
+        key: 'contact',
+        header: 'Contact',
+        render: (membre) => (
+          <div className="text-sm text-slate-600">
+            <p>{membre.email ?? 'Sans email'}</p>
+            <p>{membre.telephone ?? 'Sans telephone'}</p>
           </div>
-          <div className="md:col-span-2 flex flex-wrap gap-3">
+        ),
+      },
+      {
+        key: 'statut',
+        header: 'Statut',
+        render: (membre) => <StatusBadge status={membre.is_active ? 'actif' : 'inactif'} />,
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        render: (membre) => (
+          <div className="flex items-center gap-2">
             <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-[#0D354E] text-white text-sm font-semibold hover:bg-[#0D354E]/90"
+              type="button"
+              onClick={() => openEditDrawer(membre)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
             >
-              {editingId ? 'Mettre Ã  jour' : 'CrÃ©er'}
+              <Edit3 className="h-4 w-4" />
             </button>
-            {editingId && (
+            <button
+              type="button"
+              onClick={() => handleToggleActive(membre.id)}
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {membre.is_active ? 'Desactiver' : 'Activer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteId(membre.id)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Equipe"
+        subtitle={`${membres.length} membre(s) de l equipe`}
+        action={
+          <button
+            type="button"
+            onClick={openCreateDrawer}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau membre
+          </button>
+        }
+      />
+
+      <DataTable
+        columns={columns}
+        data={membres}
+        loading={loading}
+        rowKey={(membre) => membre.id}
+        emptyState={
+          <EmptyState
+            icon={Users}
+            title="Aucun membre"
+            description="Ajoute un premier membre a l equipe."
+            action={
               <button
                 type="button"
-                onClick={resetForm}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                onClick={openCreateDrawer}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90"
               >
-                Annuler
+                Ajouter un membre
               </button>
-            )}
+            }
+          />
+        }
+      />
+
+      <AdminDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={editingMembre ? 'Modifier le membre' : 'Nouveau membre'}
+        description="Gerer les informations de l equipe."
+        footer={
+          <div className="flex w-full justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              form="equipe-form"
+              disabled={saving}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-[#0D354E] px-4 text-sm font-medium text-white hover:bg-[#0D354E]/90 disabled:opacity-70"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        }
+      >
+        <form id="equipe-form" onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              value={form.prenom}
+              onChange={(e) => setForm((prev) => ({ ...prev, prenom: e.target.value }))}
+              placeholder="Prenom"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+            <input
+              value={form.nom}
+              onChange={(e) => setForm((prev) => ({ ...prev, nom: e.target.value }))}
+              placeholder="Nom"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+          </div>
+          <input
+            value={form.poste}
+            onChange={(e) => setForm((prev) => ({ ...prev, poste: e.target.value }))}
+            placeholder="Poste"
+            className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              value={form.email ?? ''}
+              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+              placeholder="Email"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+            <input
+              value={form.telephone ?? ''}
+              onChange={(e) => setForm((prev) => ({ ...prev, telephone: e.target.value }))}
+              placeholder="Telephone"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+          </div>
+          <textarea
+            value={form.description ?? ''}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Description"
+            rows={4}
+            className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              type="number"
+              value={form.ordre ?? 0}
+              onChange={(e) => setForm((prev) => ({ ...prev, ordre: Number(e.target.value) }))}
+              placeholder="Ordre"
+              className="h-10 rounded-xl border border-slate-200 px-3 text-sm focus:border-[#7A9E9F] focus:outline-none focus:ring-2 focus:ring-[#7A9E9F]/20"
+            />
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+              <span className="text-sm font-medium text-slate-700">Actif</span>
+              <input
+                type="checkbox"
+                checked={form.is_active ?? false}
+                onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+            </label>
           </div>
         </form>
-      </div>
+      </AdminDrawer>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h3 className="font-semibold text-[#0D354E] mb-4">Liste des membres</h3>
-        {loading ? (
-          <p className="text-sm text-slate-500">Chargement...</p>
-        ) : (
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-slate-500">
-                <tr>
-                  <th className="py-2">Nom</th>
-                  <th className="py-2">Poste</th>
-                  <th className="py-2">Actif</th>
-                  <th className="py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {membres.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-100">
-                    <td className="py-2">{item.prenom} {item.nom}</td>
-                    <td className="py-2">{item.poste}</td>
-                    <td className="py-2">{item.is_active ? 'Oui' : 'Non'}</td>
-                    <td className="py-2 flex flex-wrap gap-2">
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-slate-200"
-                        onClick={() => handleEdit(item)}
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-slate-200"
-                        onClick={() => handleToggleActive(item.id)}
-                      >
-                        {item.is_active ? 'DÃ©sactiver' : 'Activer'}
-                      </button>
-                      <button
-                        className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Supprimer ce membre ?"
+        message="Cette action supprimera definitivement le membre selectionne."
+      />
     </div>
   );
 }

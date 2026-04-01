@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { CheckCircle, Home, MessageSquare, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
-  getDashboardActivity,
-  getDashboardCharts,
-  getDashboardStats,
-} from '../../api/dashboard';
-import type {
-  ApiDashboardActivity,
-  ApiDashboardCharts,
-  ApiDashboardStats,
-} from '../../api/types';
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import PageHeader from '@/components/admin/PageHeader';
+import StatsCard from '@/components/admin/StatsCard';
+import TypeBadge from '@/components/admin/TypeBadge';
+import EmptyState from '@/components/admin/EmptyState';
+import { getDashboardActivity, getDashboardCharts, getDashboardStats } from '../../api/dashboard';
+import type { ApiDashboardActivity, ApiDashboardCharts, ApiDashboardStats } from '../../api/types';
+import { formatPrix } from '../../utils/format';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<ApiDashboardStats | null>(null);
@@ -19,9 +32,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     let isMounted = true;
 
-    const load = async () => {
+    const loadDashboard = async () => {
       try {
-        setLoading(true);
         const [statsData, activityData, chartsData] = await Promise.all([
           getDashboardStats(),
           getDashboardActivity(),
@@ -33,6 +45,8 @@ export default function AdminDashboard() {
           setActivity(activityData);
           setCharts(chartsData);
         }
+      } catch {
+        toast.error('Impossible de charger le dashboard');
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -40,123 +54,252 @@ export default function AdminDashboard() {
       }
     };
 
-    void load();
+    void loadDashboard();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  if (loading || !stats) {
-    return <div className="text-slate-500">Chargement du dashboard...</div>;
-  }
+  const latestBiens = (activity?.derniers_biens ?? []).slice(0, 5);
+  const latestContacts = (activity?.derniers_contacts ?? []).slice(0, 5);
+  const biensPerMonth = charts?.biens_par_mois ?? [];
+  const contactsPerMonth = charts?.contacts_par_mois ?? [];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-[#0D354E]">Vue d'ensemble</h2>
-        <p className="text-sm text-slate-500">
-          Suivi en temps rÃ©el des biens, contacts et performances.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Vue d'ensemble de l'activite immobiliere et commerciale."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-xs uppercase text-slate-400">Biens actifs</p>
-          <p className="text-2xl font-bold text-[#0D354E]">{stats.biens.disponibles}</p>
-          <p className="text-xs text-slate-500">Total: {stats.biens.total}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-xs uppercase text-slate-400">Vendus / rÃ©servÃ©s</p>
-          <p className="text-2xl font-bold text-[#0D354E]">
-            {stats.biens.vendus + stats.biens.reserves}
-          </p>
-          <p className="text-xs text-slate-500">En vedette: {stats.biens.en_vedette}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-xs uppercase text-slate-400">Contacts</p>
-          <p className="text-2xl font-bold text-[#0D354E]">{stats.contacts.total}</p>
-          <p className="text-xs text-slate-500">Non lus: {stats.contacts.non_lus}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-xs uppercase text-slate-400">TÃ©moignages</p>
-          <p className="text-2xl font-bold text-[#0D354E]">{stats.temoignages.total}</p>
-          <p className="text-xs text-slate-500">Actifs: {stats.temoignages.actifs}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200">
-          <p className="text-xs uppercase text-slate-400">Ã‰quipe</p>
-          <p className="text-2xl font-bold text-[#0D354E]">{stats.equipe.total}</p>
-          <p className="text-xs text-slate-500">Actifs: {stats.equipe.actifs}</p>
-        </div>
-      </div>
+      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          icon={Home}
+          label="Biens disponibles"
+          value={stats?.biens.disponibles ?? 0}
+          trend={`${stats?.biens.total ?? 0}`}
+          trendLabel="au total"
+          trendDirection="up"
+          colorClass="bg-[#0D354E]/10 text-[#0D354E]"
+          loading={loading}
+        />
+        <StatsCard
+          icon={MessageSquare}
+          label="Contacts ce mois"
+          value={stats?.contacts.ce_mois ?? 0}
+          trend={`${stats?.contacts.non_lus ?? 0}`}
+          trendLabel="non lus"
+          trendDirection="up"
+          colorClass="bg-[#7A9E9F]/10 text-[#7A9E9F]"
+          loading={loading}
+        />
+        <StatsCard
+          icon={CheckCircle}
+          label="Biens vendus"
+          value={stats?.biens.vendus ?? 0}
+          trend={`${stats?.biens.reserves ?? 0}`}
+          trendLabel="reserves"
+          trendDirection="up"
+          colorClass="bg-emerald-50 text-emerald-600"
+          loading={loading}
+        />
+        <StatsCard
+          icon={Star}
+          label="En vedette"
+          value={stats?.biens.en_vedette ?? 0}
+          trend={`${stats?.biens.vues_total ?? 0}`}
+          trendLabel="vues totales"
+          trendDirection="up"
+          colorClass="bg-amber-50 text-amber-600"
+          loading={loading}
+        />
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl p-5 border border-slate-200">
-          <h3 className="font-semibold text-[#0D354E] mb-3">ActivitÃ© rÃ©cente</h3>
-          <div className="space-y-2 text-sm text-slate-600">
-            {activity?.derniers_biens?.map((bien) => (
-              <div key={bien.id} className="flex items-center justify-between">
-                <span className="truncate">{bien.titre}</span>
-                <span className="text-xs text-slate-400">{bien.transaction}</span>
-              </div>
-            ))}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <h3 className="text-base font-semibold text-slate-800">Biens ajoutes par mois</h3>
+            <p className="text-[13px] text-slate-400">Evolution du catalogue immobilier.</p>
+          </div>
+          <div className="h-[220px]">
+            {loading ? (
+              <div className="h-full animate-pulse rounded-xl bg-slate-100" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={biensPerMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="mois"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#64748B', fontSize: 12 }}
+                  />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.08)',
+                    }}
+                  />
+                  <Bar dataKey="total" fill="#0D354E" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-slate-200">
-          <h3 className="font-semibold text-[#0D354E] mb-3">Contacts rÃ©cents</h3>
-          <div className="space-y-2 text-sm text-slate-600">
-            {activity?.derniers_contacts?.map((contact) => (
-              <div key={contact.id} className="flex items-center justify-between">
-                <span className="truncate">{contact.nom}</span>
-                <span className="text-xs text-slate-400">{contact.objet}</span>
-              </div>
-            ))}
+        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <h3 className="text-base font-semibold text-slate-800">Contacts par mois</h3>
+            <p className="text-[13px] text-slate-400">Suivi des demandes commerciales.</p>
+          </div>
+          <div className="h-[220px]">
+            {loading ? (
+              <div className="h-full animate-pulse rounded-xl bg-slate-100" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={contactsPerMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="mois"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#64748B', fontSize: 12 }}
+                  />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.08)',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#7A9E9F"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
+      </section>
 
-        <div className="bg-white rounded-xl p-5 border border-slate-200">
-          <h3 className="font-semibold text-[#0D354E] mb-3">Biens populaires</h3>
-          <div className="space-y-2 text-sm text-slate-600">
-            {activity?.biens_populaires?.map((bien) => (
-              <div key={bien.id} className="flex items-center justify-between">
-                <span className="truncate">{bien.titre}</span>
-                <span className="text-xs text-slate-400">{bien.vue_count ?? 0} vues</span>
-              </div>
-            ))}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-slate-800">Derniers biens ajoutes</h3>
+            <Link to="/admin/biens" className="text-sm font-medium text-[#7A9E9F] hover:text-[#0D354E]">
+              Voir tous -&gt;
+            </Link>
           </div>
-        </div>
-      </div>
 
-      {charts && (
-        <div className="bg-white rounded-xl p-5 border border-slate-200">
-          <h3 className="font-semibold text-[#0D354E] mb-4">Tendances mensuelles</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-600">
-            <div>
-              <p className="font-medium text-slate-700 mb-2">Biens par mois</p>
-              <div className="space-y-1">
-                {charts.biens_par_mois.map((item) => (
-                  <div key={item.mois} className="flex justify-between">
-                    <span>{item.mois}</span>
-                    <span className="text-slate-500">{item.total}</span>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex animate-pulse items-center gap-3 py-3">
+                  <div className="h-10 w-10 rounded-lg bg-slate-200" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-3 w-36 rounded bg-slate-200" />
+                    <div className="mt-2 h-2 w-20 rounded bg-slate-100" />
                   </div>
-                ))}
-              </div>
+                  <div className="h-5 w-16 rounded-full bg-slate-200" />
+                  <div className="h-3 w-20 rounded bg-slate-200" />
+                </div>
+              ))}
             </div>
+          ) : latestBiens.length > 0 ? (
             <div>
-              <p className="font-medium text-slate-700 mb-2">Contacts par mois</p>
-              <div className="space-y-1">
-                {charts.contacts_par_mois.map((item) => (
-                  <div key={item.mois} className="flex justify-between">
-                    <span>{item.mois}</span>
-                    <span className="text-slate-500">{item.total}</span>
+              {latestBiens.map((bien) => (
+                <div key={bien.id} className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-0">
+                  <img
+                    src={bien.images?.[0]?.url ?? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=120'}
+                    alt={bien.titre}
+                    className="h-10 w-10 rounded-lg object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800">{bien.titre}</p>
+                    <p className="truncate text-xs text-slate-400">{bien.reference || 'Sans reference'}</p>
                   </div>
-                ))}
-              </div>
+                  <TypeBadge type={bien.type} />
+                  <p className="text-sm font-semibold text-slate-800">{formatPrix(bien.prix, bien.transaction)}</p>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <EmptyState
+              icon={Home}
+              title="Aucun bien trouve"
+              description="Ajoutez votre premier bien au catalogue."
+            />
+          )}
         </div>
-      )}
+
+        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-slate-800">Derniers contacts</h3>
+            <Link to="/admin/contacts" className="text-sm font-medium text-[#7A9E9F] hover:text-[#0D354E]">
+              Voir tous -&gt;
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex animate-pulse items-center gap-3 py-3">
+                  <div className="h-9 w-9 rounded-full bg-slate-200" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-3 w-28 rounded bg-slate-200" />
+                    <div className="mt-2 h-2 w-32 rounded bg-slate-100" />
+                  </div>
+                  <div className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+                </div>
+              ))}
+            </div>
+          ) : latestContacts.length > 0 ? (
+            <div>
+              {latestContacts.map((contact) => (
+                <div key={contact.id} className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-0">
+                  <div className="relative">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7A9E9F]/15 text-sm font-semibold text-[#0D354E]">
+                      {contact.nom.slice(0, 1).toUpperCase()}
+                    </div>
+                    {!contact.is_read && (
+                      <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-green-500" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800">{contact.nom}</p>
+                    <p className="truncate text-xs text-slate-400">{contact.objet}</p>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    {contact.created_at
+                      ? formatDistanceToNow(new Date(contact.created_at), {
+                          addSuffix: true,
+                          locale: fr,
+                        })
+                      : 'recent'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={MessageSquare}
+              title="Aucun contact"
+              description="Les demandes clients apparaitront ici."
+            />
+          )}
+        </div>
+      </section>
     </div>
   );
 }

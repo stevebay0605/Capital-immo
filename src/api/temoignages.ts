@@ -29,13 +29,13 @@ export const getTemoignage = async (id: string | number) => {
 };
 
 export const createTemoignage = async (payload: TemoignagePayload) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.post<ApiTemoignage>('/temoignages', formData);
   return response.data;
 };
 
 export const updateTemoignage = async (id: string | number, payload: Partial<TemoignagePayload>) => {
-  const formData = toFormData(payload as Record<string, unknown>);
+  const formData = toFormData(payload);
   const response = await api.put<ApiTemoignage>(`/temoignages/${id}`, formData);
   return response.data;
 };
