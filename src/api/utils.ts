@@ -1,6 +1,6 @@
 import type { ApiPaginated } from './types';
 
-export const unwrapList = <T,>(payload: T[] | ApiPaginated<T>) => {
+export const unwrapList = <T,>(payload: T[] | ApiPaginated<T>): T[] => {
   if (Array.isArray(payload)) {
     return payload;
   }

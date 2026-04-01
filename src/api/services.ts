@@ -19,7 +19,7 @@ export interface ServicePayload {
   is_active?: boolean;
 }
 
-export const getServices = async (params?: ServiceQueryParams) => {
+export const getServices = async (params?: ServiceQueryParams): Promise<ApiService[]> => {
   const response = await api.get<ApiService[] | ApiPaginated<ApiService>>('/services', { params });
   return unwrapList(response.data);
 };

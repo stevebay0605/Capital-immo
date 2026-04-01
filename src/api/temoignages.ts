@@ -18,7 +18,7 @@ export interface TemoignagePayload {
   ordre?: number;
 }
 
-export const getTemoignages = async (params?: TemoignageQueryParams) => {
+export const getTemoignages = async (params?: TemoignageQueryParams): Promise<ApiTemoignage[]> => {
   const response = await api.get<ApiTemoignage[] | ApiPaginated<ApiTemoignage>>('/temoignages', { params });
   return unwrapList(response.data);
 };

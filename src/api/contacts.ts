@@ -23,22 +23,27 @@ export interface ContactUpdatePayload {
   is_read?: boolean;
 }
 
-export const createContact = async (payload: ContactPayload) => {
+export const createContact = async (
+  payload: ContactPayload
+): Promise<{ message: string; contact: ApiContact }> => {
   const response = await api.post<{ message: string; contact: ApiContact }>('/contacts', payload);
   return response.data;
 };
 
-export const getContacts = async (params?: ContactsQueryParams) => {
+export const getContacts = async (params?: ContactsQueryParams): Promise<ApiContact[]> => {
   const response = await api.get<ApiContact[] | ApiPaginated<ApiContact>>('/contacts', { params });
   return unwrapList(response.data);
 };
 
-export const getContact = async (id: string | number) => {
+export const getContact = async (id: string | number): Promise<ApiContact> => {
   const response = await api.get<ApiContact>(`/contacts/${id}`);
   return response.data;
 };
 
-export const updateContact = async (id: string | number, payload: ContactUpdatePayload) => {
+export const updateContact = async (
+  id: string | number,
+  payload: ContactUpdatePayload
+): Promise<ApiContact> => {
   const response = await api.put<ApiContact>(`/contacts/${id}`, payload);
   return response.data;
 };

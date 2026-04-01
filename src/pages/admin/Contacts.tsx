@@ -40,7 +40,7 @@ export default function AdminContacts() {
     [readFilter]
   );
 
-  const loadContacts = async (params: ContactsQueryParams = queryParams) => {
+  const loadContacts = async (params: ContactsQueryParams = queryParams): Promise<ApiContact[]> => {
     setLoading(true);
     try {
       const data = await getContacts(params);

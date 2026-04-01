@@ -19,7 +19,7 @@ export interface MembreEquipePayload {
   is_active?: boolean;
 }
 
-export const getEquipe = async (params?: EquipeQueryParams) => {
+export const getEquipe = async (params?: EquipeQueryParams): Promise<ApiMembreEquipe[]> => {
   const response = await api.get<ApiMembreEquipe[] | ApiPaginated<ApiMembreEquipe>>('/equipe', { params });
   return unwrapList(response.data);
 };
